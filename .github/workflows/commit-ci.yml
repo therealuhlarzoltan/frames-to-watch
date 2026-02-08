@@ -1,0 +1,456 @@
+name: commit-ci
+
+on:
+  push:
+
+concurrency:
+  group: commit-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  duplicate-code-check:
+    name: duplicate-code-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Duplicate code check (Java)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::JSCPD - Duplicate code check (Java)"
+          npx --yes jscpd \
+            --path microservices \
+            --pattern "**/*.java" \
+            --ignore "**/build/**,**/target/**,**/.gradle/**,**/node_modules/**,**/.venv/**,**/dist/**,**/out/**,**/__pycache__/**" \
+            --min-lines 5 \
+            --min-tokens 50 \
+            --threshold 0 \
+            --reporters console
+          echo "::endgroup::"
+
+      - name: Duplicate code check (JavaScript/TypeScript)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::JSCPD - Duplicate code check (JavaScript/TypeScript)"
+          npx --yes jscpd \
+            --path microservices \
+            --pattern "**/*.{js,jsx,ts,tsx}" \
+            --ignore "**/build/**,**/target/**,**/.gradle/**,**/node_modules/**,**/.venv/**,**/dist/**,**/out/**,**/__pycache__/**" \
+            --min-lines 5 \
+            --min-tokens 50 \
+            --threshold 0 \
+            --reporters console
+          echo "::endgroup::"
+
+      - name: Duplicate code check (Python)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::JSCPD - Duplicate code check (Python)"
+          npx --yes jscpd \
+            --path microservices \
+            --pattern "**/*.py" \
+            --ignore "**/build/**,**/target/**,**/.gradle/**,**/node_modules/**,**/.venv/**,**/dist/**,**/out/**,**/__pycache__/**" \
+            --min-lines 5 \
+            --min-tokens 50 \
+            --threshold 0 \
+            --reporters console
+          echo "::endgroup::"
+
+  security-scan:
+    name: security-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Trivy scan (Vulnerabilities)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy scan (Secrets)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy scan (Misconfigurations)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Trivy scan (Licenses)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: license
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  javascript:
+    name: javascript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java (required by PMD runner)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "22"
+
+      - name: Static analysis (JavaScript/TypeScript, PMD)
+        id: pmd
+        uses: pmd/pmd-github-action@v2
+        with:
+          analyzeModifiedFilesOnly: false
+          sourcePath: microservices
+          rulesets: >-
+            category/ecmascript/bestpractices.xml,
+            category/ecmascript/errorprone.xml,
+            category/ecmascript/codestyle.xml,
+            category/ecmascript/performance.xml
+
+      - name: Fail if PMD violations were found (JavaScript/TypeScript)
+        if: steps.pmd.outputs.violations != 0
+        run: |
+          echo "PMD violations: ${{ steps.pmd.outputs.violations }}"
+          exit 1
+
+  java:
+    name: java
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Discover Gradle projects
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Gradle wrapper discovery"
+          if [[ -f "./gradlew" ]]; then
+            echo "Found root Gradle wrapper: ./gradlew"
+          fi
+          find microservices -type f -name gradlew -print | sed 's/^/Found wrapper: /'
+          echo "::endgroup::"
+
+      - name: Static analysis (Java main sources, PMD)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          run_task() {
+            local dir="$1"
+            echo "::group::PMD main sources ($dir)"
+            cd "$dir"
+            chmod +x ./gradlew
+            ./gradlew --no-daemon pmdMain
+            cd - >/dev/null
+            echo "::endgroup::"
+          }
+
+          if [[ -f "./gradlew" ]]; then run_task "."; fi
+          while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
+
+      - name: Static analysis (Java test sources, PMD)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          run_task() {
+            local dir="$1"
+            echo "::group::PMD test sources ($dir)"
+            cd "$dir"
+            chmod +x ./gradlew
+            ./gradlew --no-daemon pmdTest
+            cd - >/dev/null
+            echo "::endgroup::"
+          }
+
+          if [[ -f "./gradlew" ]]; then run_task "."; fi
+          while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
+
+      - name: Build (Java)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          run_task() {
+            local dir="$1"
+            echo "::group::Build (assemble) ($dir)"
+            cd "$dir"
+            chmod +x ./gradlew
+            ./gradlew --no-daemon clean assemble
+            cd - >/dev/null
+            echo "::endgroup::"
+          }
+
+          if [[ -f "./gradlew" ]]; then run_task "."; fi
+          while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
+
+      - name: Unit tests (Java)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          run_task() {
+            local dir="$1"
+            echo "::group::Unit tests (test) ($dir)"
+            cd "$dir"
+            chmod +x ./gradlew
+            ./gradlew --no-daemon test
+            cd - >/dev/null
+            echo "::endgroup::"
+          }
+
+          if [[ -f "./gradlew" ]]; then run_task "."; fi
+          while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
+
+      - name: Coverage gate (Java, JaCoCo >= 80%)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          run_task() {
+            local dir="$1"
+            echo "::group::Coverage gate (JaCoCo) ($dir)"
+            cd "$dir"
+            chmod +x ./gradlew
+            ./gradlew --no-daemon jacocoTestCoverageVerification
+            cd - >/dev/null
+            echo "::endgroup::"
+          }
+
+          if [[ -f "./gradlew" ]]; then run_task "."; fi
+          while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
+
+      - name: Dependency vulnerability scan (Java, optional OWASP dependency-check)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "This runs only if a Gradle task named 'dependencyCheckAnalyze' exists."
+
+          run_task_if_present() {
+            local dir="$1"
+            echo "::group::OWASP Dependency-Check ($dir)"
+            cd "$dir"
+            chmod +x ./gradlew
+            if ./gradlew -q tasks --all | grep -q "^dependencyCheckAnalyze$"; then
+              ./gradlew --no-daemon dependencyCheckAnalyze
+            else
+              echo "Skipping: dependencyCheckAnalyze task not found."
+            fi
+            cd - >/dev/null
+            echo "::endgroup::"
+          }
+
+          if [[ -f "./gradlew" ]]; then run_task_if_present "."; fi
+          while IFS= read -r -d '' gw; do run_task_if_present "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
+
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python tooling
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          pip install ruff bandit pytest pytest-cov pip-audit
+
+      - name: Discover Python projects
+        id: pyproj
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Python project discovery"
+          mapfile -t PY_DIRS < <(
+            find microservices -type f \( -name "requirements.txt" -o -name "pyproject.toml" \) \
+              -printf '%h\n' | sort -u
+          )
+          echo "Found ${#PY_DIRS[@]} Python project(s)."
+          for d in "${PY_DIRS[@]}"; do echo " - $d"; done
+          echo "::endgroup::"
+
+          {
+            echo "PY_DIRS<<EOF"
+            for d in "${PY_DIRS[@]}"; do echo "$d"; done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies (Python)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
+            echo "No Python projects found; skipping."
+            exit 0
+          fi
+
+          while IFS= read -r d; do
+            [[ -z "$d" ]] && continue
+            echo "::group::Install dependencies ($d)"
+            if [[ -f "$d/requirements.txt" ]]; then
+              echo "pip install -r requirements.txt"
+              pip install -r "$d/requirements.txt"
+            fi
+            if [[ -f "$d/requirements-dev.txt" ]]; then
+              echo "pip install -r requirements-dev.txt"
+              pip install -r "$d/requirements-dev.txt"
+            fi
+            echo "::endgroup::"
+          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+
+      - name: Static analysis (Python sources)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
+            echo "No Python projects found; skipping."
+            exit 0
+          fi
+
+          while IFS= read -r d; do
+            [[ -z "$d" ]] && continue
+            echo "::group::Static analysis (Python sources) ($d)"
+
+            if [[ -d "$d/src" ]]; then
+              echo "ruff check src/"
+              (cd "$d" && ruff check src)
+              echo "bandit -r src/"
+              (cd "$d" && bandit -r src -q)
+            else
+              echo "No src/ directory; scanning project root (excluding tests)."
+              (cd "$d" && ruff check .)
+              (cd "$d" && bandit -r . -x "tests,test,__tests__" -q)
+            fi
+
+            echo "::endgroup::"
+          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+
+      - name: Static analysis (Python tests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
+            echo "No Python projects found; skipping."
+            exit 0
+          fi
+
+          while IFS= read -r d; do
+            [[ -z "$d" ]] && continue
+            echo "::group::Static analysis (Python tests) ($d)"
+
+            if [[ -d "$d/tests" ]]; then
+              echo "ruff check tests/"
+              (cd "$d" && ruff check tests)
+              echo "bandit -r tests/ (best-effort; does not fail build)"
+              (cd "$d" && bandit -r tests -q || true)
+            else
+              echo "No tests/ directory; skipping test-only analysis."
+            fi
+
+            echo "::endgroup::"
+          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+
+      - name: Dependency vulnerability scan (Python, pip-audit)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
+            echo "No Python projects found; skipping."
+            exit 0
+          fi
+
+          while IFS= read -r d; do
+            [[ -z "$d" ]] && continue
+            echo "::group::pip-audit ($d)"
+            if [[ -f "$d/requirements.txt" ]]; then
+              echo "pip-audit -r requirements.txt"
+              (cd "$d" && pip-audit -r requirements.txt)
+            else
+              echo "pip-audit (environment)"
+              (cd "$d" && pip-audit)
+            fi
+            echo "::endgroup::"
+          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+
+      - name: Unit tests (Python)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
+            echo "No Python projects found; skipping."
+            exit 0
+          fi
+
+          while IFS= read -r d; do
+            [[ -z "$d" ]] && continue
+            echo "::group::Unit tests (pytest) ($d)"
+            (cd "$d" && pytest -q)
+            echo "::endgroup::"
+          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+
+      - name: Coverage gate (Python, coverage >= 80%)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
+            echo "No Python projects found; skipping."
+            exit 0
+          fi
+
+          while IFS= read -r d; do
+            [[ -z "$d" ]] && continue
+            echo "::group::Coverage gate (pytest-cov) ($d)"
+            (cd "$d" && pytest -q --cov=. --cov-report=term-missing --cov-fail-under=80)
+            echo "::endgroup::"
+          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
