@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id 'pmd'
+    id 'jacoco'
 }
 
 group = 'hu.therealuhlarzoltan.framestowatch'
@@ -18,3 +20,19 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+pmd {
+    consoleOutput = true
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.80
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification
