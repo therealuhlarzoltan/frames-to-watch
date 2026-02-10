@@ -8,11 +8,11 @@ class InvalidInputDataExceptionTest {
 
     @Test
     void invalidInputDataException_throwWithMessage_exceptionThrown() {
-        InvalidInputDataException ex = assertThrows(
+        InvalidInputDataException exception = assertThrows(
                 InvalidInputDataException.class,
                 () -> { throw new InvalidInputDataException("invalid input data"); }
         );
 
-        assertEquals("invalid input data", ex.getMessage());
+        assertEquals("invalid input data", exception.getMessage(), "Exception message should match the declared message");
     }
 }
