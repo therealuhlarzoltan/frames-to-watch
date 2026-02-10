@@ -32,7 +32,6 @@
           message="Test methods should follow: method_scenario_expected (underscore segments)."
           class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <properties>
-            <property name="version" value="2.0"/>
             <property name="xpathVersion" value="2.0"/>
             <property name="xpath" value="
                     //MethodDeclaration[
