@@ -3,7 +3,7 @@ plugins {
     id 'pmd'
     id 'jacoco'
     id "org.owasp.dependencycheck" version "12.2.0"
-    id "org.cyclonedx.bom" version "4.0.0"
+    id "org.cyclonedx.bom" version "3.1.0"
 }
 
 group = 'hu.therealuhlarzoltan.framestowatch'
