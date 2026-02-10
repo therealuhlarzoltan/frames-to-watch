@@ -83,11 +83,11 @@ jobs:
             cd "$dir"
             chmod +x ./gradlew
 
-            echo "Running cyclonedxBomRuntime (if project supports it)"
-            ./gradlew --no-daemon cyclonedxBomRuntime || true
+            echo "Running cyclonedxBomRuntime"
+            ./gradlew --no-daemon cyclonedxBomRuntime
 
-            echo "Running cyclonedxBomFull (if project supports it)"
-            ./gradlew --no-daemon cyclonedxBomFull || true
+            echo "Running cyclonedxBomFull"
+            ./gradlew --no-daemon cyclonedxBomFull
 
             cd - >/dev/null
             echo "::endgroup::"
