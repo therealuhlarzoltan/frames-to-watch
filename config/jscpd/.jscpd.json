@@ -1,5 +1,5 @@
 {
-  "path": ["microservices"],
+  "path": ["../../microservices"],
   "pattern": "**/*.{java,kt,js,jsx,ts,tsx,py}",
   "ignore": [
     "**/build/**",
