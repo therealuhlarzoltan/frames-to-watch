@@ -21,6 +21,10 @@ test {
     useJUnitPlatform()
 }
 
+pmd {
+    consoleOutput = true
+}
+
 jacocoTestCoverageVerification {
     violationRules {
         rule {
