@@ -77,19 +77,29 @@ jobs:
         run: |
           set -euo pipefail
 
+          has_task() {
+            local task="$1"
+            ./gradlew -q help --task "$task" >/dev/null 2>&1
+          }
+
           run_sbom() {
             local dir="$1"
-            echo "::group::CycloneDX SBOM ($dir)"
+            echo "::group::CycloneDX SBOMs ($dir)"
             cd "$dir"
             chmod +x ./gradlew
 
-            if ./gradlew -q help --task cyclonedxBom >/dev/null 2>&1; then
-              echo "Found task: cyclonedxBom"
-              ./gradlew --no-daemon cyclonedxBom
+            if has_task cyclonedxBomRuntime; then
+              echo "Found task: cyclonedxBomRuntime"
+              ./gradlew --no-daemon cyclonedxBomRuntime
             else
-              echo "Skipping: cyclonedxBom task not found."
-              echo "Available tasks (filtered):"
-              ./gradlew -q tasks --all | sed -n '1,200p'
+              echo "Skipping: cyclonedxBomRuntime task not found."
+            fi
+
+            if has_task cyclonedxBomFull; then
+              echo "Found task: cyclonedxBomFull"
+              ./gradlew --no-daemon cyclonedxBomFull
+            else
+              echo "Skipping: cyclonedxBomFull task not found."
             fi
 
             cd - >/dev/null
@@ -129,7 +139,7 @@ jobs:
         with:
           version: v0.65.0
 
-      - name: Trivy scan (SBOM vulnerabilities)
+      - name: Trivy scan (SBOM vulnerabilities) [Full classpath]
         if: steps.sbom.outputs.has_sbom == 'true'
         shell: bash
         run: |
@@ -144,9 +154,11 @@ jobs:
               --format table \
               --exit-code 1
             echo "::endgroup::"
-          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" \) | sort)
+          done < <(
+            find microservices -type f -path "*/build/*" -iname "*bom*full*.json" ! -iname "*runtime*" | sort
+          )
 
-      - name: Trivy scan (SBOM licenses)
+      - name: Trivy scan (SBOM licenses) [Only runtime classpath]
         if: steps.sbom.outputs.has_sbom == 'true'
         shell: bash
         run: |
@@ -158,7 +170,9 @@ jobs:
               --scanners license \
               --exit-code 1
             echo "::endgroup::"
-          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" \) | sort)
+          done < <(
+            find microservices -type f -path "*/build/*" -iname "*bom*runtime*.json" ! -iname "*full*" | sort
+          )
 
       - name: Trivy scan (Secrets)
         shell: bash

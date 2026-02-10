@@ -101,3 +101,12 @@ dependencyCheck {
 tasks.named("check") {
     dependsOn("jacocoTestCoverageVerification", "dependencyCheckAnalyze")
 }
+
+tasks.register("cyclonedxBomRuntime", org.cyclonedx.gradle.CycloneDxTask) {
+    includeConfigs = ["runtimeClasspath"]
+    jsonOutput = layout.buildDirectory.file("reports/bom-runtime.json").get().asFile
+}
+
+tasks.register("cyclonedxBomFull", org.cyclonedx.gradle.CycloneDxTask) {
+    jsonOutput = layout.buildDirectory.file("reports/bom-full.json").get().asFile
+}
