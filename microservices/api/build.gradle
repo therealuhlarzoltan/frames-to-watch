@@ -27,51 +27,48 @@ pmd {
     toolVersion = "7.21.0"
 }
 
-def ws = System.getenv("GITHUB_WORKSPACE")
-
-File repoRoot
-if (ws != null && !ws.trim().isEmpty()) {
-    repoRoot = file(ws)
-    logger.lifecycle("[PMD] Using GITHUB_WORKSPACE as repo root: ${repoRoot.absolutePath}")
-} else {
-    logger.lifecycle("[PMD] GITHUB_WORKSPACE not set. Searching upwards from Gradle rootDir: ${rootDir.absolutePath}")
-
-    def d = rootDir
-    while (d != null && !new File(d, "config/pmd").isDirectory()) {
-        logger.info("[PMD] config/pmd not found in: ${d.absolutePath} -> moving to parent")
-        d = d.parentFile
+gradle.taskGraph.whenReady { graph ->
+    def willRunPmd = graph.allTasks.any { it instanceof Pmd }
+    if (!willRunPmd) {
+        return
     }
 
-    if (d == null) {
-        throw new GradleException("[PMD] Could not locate 'config/pmd' by walking up from ${rootDir.absolutePath}. " +
-                "Either add it at repo root, or run with GITHUB_WORKSPACE/PMD_REPO_ROOT set.")
+    def ws = System.getenv("GITHUB_WORKSPACE")
+
+    File repoRoot
+    if (ws != null && !ws.trim().isEmpty()) {
+        repoRoot = file(ws)
+        logger.lifecycle("[PMD] Using GITHUB_WORKSPACE as repo root: ${repoRoot.absolutePath}")
+    } else {
+        logger.lifecycle("[PMD] GITHUB_WORKSPACE not set. Searching upwards from Gradle rootDir: ${rootDir.absolutePath}")
+
+        def d = rootDir
+        while (d != null && !new File(d, "config/pmd").isDirectory()) {
+            logger.info("[PMD] config/pmd not found in: ${d.absolutePath} -> moving to parent")
+            d = d.parentFile
+        }
+
+        if (d == null) {
+            throw new GradleException("[PMD] Could not locate 'config/pmd' by walking up from ${rootDir.absolutePath}.")
+        }
+
+        repoRoot = d
+        logger.lifecycle("[PMD] Found repo root by traversal: ${repoRoot.absolutePath}")
     }
 
-    repoRoot = d
-    logger.lifecycle("[PMD] Found repo root by traversal: ${repoRoot.absolutePath}")
-}
+    def pmdConfigDir = new File(repoRoot, "config/pmd")
+    def pmdMainRules = new File(pmdConfigDir, "pmd-main.xml")
+    def pmdTestRules = new File(pmdConfigDir, "pmd-test.xml")
 
-def pmdConfigDir = new File(repoRoot, "config/pmd")
-def pmdMainRules = new File(pmdConfigDir, "pmd-main.xml")
-def pmdTestRules = new File(pmdConfigDir, "pmd-test.xml")
+    logger.lifecycle("[PMD] Ruleset dir: ${pmdConfigDir.absolutePath}")
+    logger.lifecycle("[PMD] Main ruleset: ${pmdMainRules.absolutePath} (exists=${pmdMainRules.exists()})")
+    logger.lifecycle("[PMD] Test ruleset: ${pmdTestRules.absolutePath} (exists=${pmdTestRules.exists()})")
 
-logger.lifecycle("[PMD] Ruleset dir: ${pmdConfigDir.absolutePath}")
-logger.lifecycle("[PMD] Main ruleset: ${pmdMainRules.absolutePath} (exists=${pmdMainRules.exists()})")
-logger.lifecycle("[PMD] Test ruleset: ${pmdTestRules.absolutePath} (exists=${pmdTestRules.exists()})")
+    if (!pmdMainRules.isFile()) throw new GradleException("[PMD] Missing main ruleset file: ${pmdMainRules.absolutePath}")
+    if (!pmdTestRules.isFile()) throw new GradleException("[PMD] Missing test ruleset file: ${pmdTestRules.absolutePath}")
 
-if (!pmdMainRules.isFile()) {
-    throw new GradleException("[PMD] Missing main ruleset file: ${pmdMainRules.absolutePath}")
-}
-if (!pmdTestRules.isFile()) {
-    throw new GradleException("[PMD] Missing test ruleset file: ${pmdTestRules.absolutePath}")
-}
-
-tasks.named("pmdMain") {
-    ruleSetFiles = files(pmdMainRules)
-}
-
-tasks.named("pmdTest") {
-    ruleSetFiles = files(pmdTestRules)
+    tasks.named("pmdMain").configure { ruleSetFiles = files(pmdMainRules) }
+    tasks.named("pmdTest").configure { ruleSetFiles = files(pmdTestRules) }
 }
 
 def jacocoExcludes = ["**/*Application.class"]
@@ -88,3 +85,5 @@ jacocoTestCoverageVerification {
         }
     }
 }
+
+check.dependsOn jacocoTestCoverageVerification
