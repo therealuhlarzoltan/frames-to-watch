@@ -23,7 +23,7 @@ test {
 
 pmd {
     consoleOutput = true
-    ruleSetFiles = []
+    ruleSets = []
 }
 
 def repoRoot = System.getenv("GITHUB_WORKSPACE") ?: rootDir.absolutePath
