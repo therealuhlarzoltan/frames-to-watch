@@ -285,37 +285,32 @@ jobs:
           while IFS= read -r -d '' gw; do run_task_if_present "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
 
   python:
-    name: python
+    name: Python
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install Python tooling
-        run: |
-          set -e
-          python -m pip install --upgrade pip
-          pip install ruff bandit pytest pytest-cov pip-audit
-
-      - name: Discover Python projects
-        id: pyproj
+      - name: Detect Python projects and pip cache eligibility
+        id: pyprobe
         shell: bash
         run: |
           set -euo pipefail
-          echo "::group::Python project discovery"
+          echo "::group::Python probe"
+
           mapfile -t PY_DIRS < <(
             find microservices -type f \( -name "requirements.txt" -o -name "pyproject.toml" \) \
               -printf '%h\n' | sort -u
           )
+
+          if find microservices -type f \( -name "requirements.txt" -o -name "pyproject.toml" \) -print -quit | grep -q .; then
+            echo "pip_cache=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pip_cache=false" >> "$GITHUB_OUTPUT"
+          fi
+
           echo "Found ${#PY_DIRS[@]} Python project(s)."
           for d in "${PY_DIRS[@]}"; do echo " - $d"; done
-          echo "::endgroup::"
 
           {
             echo "PY_DIRS<<EOF"
@@ -323,46 +318,66 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies (Python)
+          echo "::endgroup::"
+
+      - name: Set up Python (cached)
+        if: steps.pyprobe.outputs.pip_cache == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Python (no cache)
+        if: steps.pyprobe.outputs.pip_cache != 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Python tooling
+        if: steps.pyprobe.outputs.PY_DIRS != ''
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
-            echo "No Python projects found; skipping."
-            exit 0
-          fi
+          python -m pip install --upgrade pip
+          pip install ruff bandit pytest pytest-cov pip-audit
 
+      - name: Install dependencies (Python)
+        if: steps.pyprobe.outputs.PY_DIRS != ''
+        shell: bash
+        run: |
+          set -euo pipefail
           while IFS= read -r d; do
             [[ -z "$d" ]] && continue
             echo "::group::Install dependencies ($d)"
+
             if [[ -f "$d/requirements.txt" ]]; then
               echo "pip install -r requirements.txt"
               pip install -r "$d/requirements.txt"
             fi
+
             if [[ -f "$d/requirements-dev.txt" ]]; then
               echo "pip install -r requirements-dev.txt"
               pip install -r "$d/requirements-dev.txt"
             fi
-            echo "::endgroup::"
-          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
 
-      - name: Static analysis (Python sources)
+            if [[ -f "$d/pyproject.toml" && ! -f "$d/requirements.txt" ]]; then
+              echo "Found pyproject.toml without requirements.txt; skipping dependency install (no installer configured)."
+            fi
+
+            echo "::endgroup::"
+          done <<< "${{ steps.pyprobe.outputs.PY_DIRS }}"
+
+      - name: Static analysis (Python main sources)
+        if: steps.pyprobe.outputs.PY_DIRS != ''
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
-            echo "No Python projects found; skipping."
-            exit 0
-          fi
-
           while IFS= read -r d; do
             [[ -z "$d" ]] && continue
-            echo "::group::Static analysis (Python sources) ($d)"
+            echo "::group::Static analysis (Python main) ($d)"
 
             if [[ -d "$d/src" ]]; then
-              echo "ruff check src/"
               (cd "$d" && ruff check src)
-              echo "bandit -r src/"
               (cd "$d" && bandit -r src -q)
             else
               echo "No src/ directory; scanning project root (excluding tests)."
@@ -371,83 +386,77 @@ jobs:
             fi
 
             echo "::endgroup::"
-          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+          done <<< "${{ steps.pyprobe.outputs.PY_DIRS }}"
 
       - name: Static analysis (Python tests)
+        if: steps.pyprobe.outputs.PY_DIRS != ''
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
-            echo "No Python projects found; skipping."
-            exit 0
-          fi
-
           while IFS= read -r d; do
             [[ -z "$d" ]] && continue
             echo "::group::Static analysis (Python tests) ($d)"
 
             if [[ -d "$d/tests" ]]; then
-              echo "ruff check tests/"
               (cd "$d" && ruff check tests)
-              echo "bandit -r tests/ (best-effort; does not fail build)"
               (cd "$d" && bandit -r tests -q || true)
             else
               echo "No tests/ directory; skipping test-only analysis."
             fi
 
             echo "::endgroup::"
-          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+          done <<< "${{ steps.pyprobe.outputs.PY_DIRS }}"
 
       - name: Dependency vulnerability scan (Python, pip-audit)
+        if: steps.pyprobe.outputs.PY_DIRS != ''
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
-            echo "No Python projects found; skipping."
-            exit 0
-          fi
-
           while IFS= read -r d; do
             [[ -z "$d" ]] && continue
             echo "::group::pip-audit ($d)"
+
             if [[ -f "$d/requirements.txt" ]]; then
-              echo "pip-audit -r requirements.txt"
               (cd "$d" && pip-audit -r requirements.txt)
             else
-              echo "pip-audit (environment)"
-              (cd "$d" && pip-audit)
+              echo "No requirements.txt; skipping pip-audit for this project."
             fi
-            echo "::endgroup::"
-          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
 
-      - name: Unit tests (Python)
+            echo "::endgroup::"
+          done <<< "${{ steps.pyprobe.outputs.PY_DIRS }}"
+
+      - name: Unit tests (Python, pytest)
+        if: steps.pyprobe.outputs.PY_DIRS != ''
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
-            echo "No Python projects found; skipping."
-            exit 0
-          fi
-
           while IFS= read -r d; do
             [[ -z "$d" ]] && continue
             echo "::group::Unit tests (pytest) ($d)"
-            (cd "$d" && pytest -q)
+
+            if [[ -d "$d/tests" ]]; then
+              (cd "$d" && pytest -q)
+            else
+              echo "No tests/ directory; skipping."
+            fi
+
             echo "::endgroup::"
-          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+          done <<< "${{ steps.pyprobe.outputs.PY_DIRS }}"
 
       - name: Coverage gate (Python, coverage >= 80%)
+        if: steps.pyprobe.outputs.PY_DIRS != ''
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${{ steps.pyproj.outputs.PY_DIRS }}" ]]; then
-            echo "No Python projects found; skipping."
-            exit 0
-          fi
-
           while IFS= read -r d; do
             [[ -z "$d" ]] && continue
             echo "::group::Coverage gate (pytest-cov) ($d)"
-            (cd "$d" && pytest -q --cov=. --cov-report=term-missing --cov-fail-under=80)
+
+            if [[ -d "$d/tests" ]]; then
+              (cd "$d" && pytest -q --cov=. --cov-report=term-missing --cov-fail-under=80)
+            else
+              echo "No tests/ directory; skipping."
+            fi
+
             echo "::endgroup::"
-          done <<< "${{ steps.pyproj.outputs.PY_DIRS }}"
+          done <<< "${{ steps.pyprobe.outputs.PY_DIRS }}"

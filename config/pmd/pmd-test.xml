@@ -91,4 +91,78 @@
         </properties>
     </rule>
 
+    <rule name="NoPackagePrivateHelperMethodsInTests"
+          language="java"
+          message="Helper methods in tests must declare an explicit access modifier (prefer private)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="xpath" value="
+              //MethodDeclaration[
+                not(
+                  pmd-java:hasAnnotation('org.junit.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                  or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                )
+                and @Public = false() and @Protected = false() and @Private = false()
+              ]
+            "/>
+        </properties>
+    </rule>
+
+    <rule name="NoPackagePrivateNestedHelperClassesInTests"
+          language="java"
+          message="Nested helper classes in tests must declare an explicit access modifier (prefer private)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="xpath" value="
+              //ClassDeclaration[
+                ancestor::ClassDeclaration
+                and @Public = false() and @Protected = false() and @Private = false()
+              ]
+            "/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/codestyle.xml/CommentDefaultAccessModifier">
+        <properties>
+            <property name="violationSuppressXPath" value="
+              .[
+                (
+                  self::MethodDeclaration
+                  and (@Public = false() and @Protected = false() and @Private = false())
+                  and (
+                    pmd-java:hasAnnotation('org.junit.Test')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                    or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                  )
+                )
+                or
+                (
+                  self::ClassDeclaration
+                  and (@Public = false() and @Protected = false() and @Private = false())
+                  and (
+                    .//MethodDeclaration[
+                      pmd-java:hasAnnotation('org.junit.Test')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                      or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                    ]
+                  )
+                )
+              ]
+            "/>
+        </properties>
+    </rule>
+
 </ruleset>
