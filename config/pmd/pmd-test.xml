@@ -11,7 +11,7 @@
     <rule ref="category/java/errorprone.xml"/>
     <rule ref="category/java/multithreading.xml"/>
 
-    <rule ref="category/java/error-prone.xml">
+    <rule ref="category/java/errorprone.xml">
         <exclude name="MissingSerialVersionUID"/>
     </rule>
 

@@ -9,7 +9,7 @@
     </description>
 
     <!-- PMD's standard Java rules -->
-    <rule ref="category/java/error-prone.xml">
+    <rule ref="category/java/errorprone.xml">
         <!-- Rules must be excluded in order to redefine/refine them -->
         <exclude name="MissingSerialVersionUID"/>
     </rule>
