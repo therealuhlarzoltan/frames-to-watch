@@ -72,45 +72,101 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Trivy scan (Vulnerabilities)
-        uses: aquasecurity/trivy-action@0.33.1
+      - name: Generate SBOMs (CycloneDX) for all Gradle wrappers
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          run_sbom() {
+            local dir="$1"
+            echo "::group::CycloneDX SBOM ($dir)"
+            cd "$dir"
+            chmod +x ./gradlew
+          
+            if ./gradlew -q tasks --all | grep -q "^cyclonedxBom$"; then
+              ./gradlew --no-daemon cyclonedxBom
+            else
+              echo "Skipping: cyclonedxBom task not found."
+            fi
+          
+            cd - >/dev/null
+            echo "::endgroup::"
+          }
+          
+          if [[ -f "./gradlew" ]]; then run_sbom "."; fi
+          while IFS= read -r -d '' gw; do
+            run_sbom "$(dirname "$gw")"
+          done < <(find microservices -type f -name gradlew -print0)
+
+      - name: Discover SBOM files
+        id: sbom
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::SBOM discovery"
+          
+          # Restrict to Gradle build outputs to avoid random bom files
+          mapfile -t SBOMS < <(
+            find microservices -type f -path "*/build/*" \( -iname "*bom*.json" -o -iname "*bom*.xml" \) | sort
+          )
+          
+          echo "Found ${#SBOMS[@]} SBOM file(s)."
+          for f in "${SBOMS[@]}"; do echo " - $f"; done
+          
+          echo "::endgroup::"
+          
+          if (( ${#SBOMS[@]} > 0 )); then
+            echo "has_sbom=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_sbom=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@e6c2c5e321ed9123bda567646e2f96565e34abe1
         with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+          version: v0.65.0
+
+      - name: Trivy scan (SBOM vulnerabilities)
+        if: steps.sbom.outputs.has_sbom == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+            echo "::group::Trivy SBOM vuln ($f)"
+            trivy sbom "$f" \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --exit-code 1
+            echo "::endgroup::"
+          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" -o -iname "*bom*.xml" \) | sort)
+
+      - name: Trivy scan (SBOM licenses)
+        if: steps.sbom.outputs.has_sbom == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+            echo "::group::Trivy SBOM license ($f)"
+            trivy sbom "$f" \
+              --scanners license \
+              --exit-code 1
+            echo "::endgroup::"
+          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" -o -iname "*bom*.xml" \) | sort)
 
       - name: Trivy scan (Secrets)
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: secret
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy fs . --scanners secret --exit-code 1
 
       - name: Trivy scan (Misconfigurations)
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: misconfig
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-
-      - name: Trivy scan (Licenses)
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: license
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy fs . --scanners misconfig --severity HIGH,CRITICAL --exit-code 1
 
   javascript:
     name: javascript
