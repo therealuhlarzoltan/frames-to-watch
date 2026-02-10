@@ -110,7 +110,7 @@ jobs:
           
           # Restrict to Gradle build outputs to avoid random bom files
           mapfile -t SBOMS < <(
-            find microservices -type f -path "*/build/*" \( -iname "*bom*.json" -o \) | sort
+            find microservices -type f -path "*/build/*" \( -iname "*bom*.json" \) | sort
           )
           
           echo "Found ${#SBOMS[@]} SBOM file(s)."
@@ -144,7 +144,7 @@ jobs:
               --format table \
               --exit-code 1
             echo "::endgroup::"
-          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" -o \) | sort)
+          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" \) | sort)
 
       - name: Trivy scan (SBOM licenses)
         if: steps.sbom.outputs.has_sbom == 'true'
@@ -158,7 +158,7 @@ jobs:
               --scanners license \
               --exit-code 1
             echo "::endgroup::"
-          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" -o \) | sort)
+          done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" \) | sort)
 
       - name: Trivy scan (Secrets)
         shell: bash
