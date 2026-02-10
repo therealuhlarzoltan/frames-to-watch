@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<ruleset name="FramesToWatch PMD - Test"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        PMD rules for test sources.
+    </description>
+
+    <rule ref="category/java/errorprone.xml"/>
+    <rule ref="category/java/multithreading.xml"/>
+
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="MissingSerialVersionUID"/>
+        <exclude name="AvoidReassigningParameters"/>
+        <exclude name="JUnitTestContainsTooManyAsserts"/>
+    </rule>
+
+    <rule ref="category/java/performance.xml"/>
+
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="MethodNamingConventions"/>
+        <exclude name="FieldNamingConventions"/>
+        <exclude name="FormalParameterNamingConventions"/>
+        <exclude name="LocalVariableNamingConventions"/>
+    </rule>
+
+    <!--Test methods: enforce underscore naming convention -->
+    <rule name="TestMethodNamingConvention"
+          language="java"
+          message="Test methods should follow: method_scenario_expected (underscore segments)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="version" value="2.0"/>
+            <property name="xpath"
+                      value="
+                    //MethodDeclaration[
+                      Annotation/MarkerAnnotation/Name[
+                        @Image = 'Test'
+                        or @Image = 'ParameterizedTest'
+                        or @Image = 'RepeatedTest'
+                        or @Image = 'TestFactory'
+                        or @Image = 'TestTemplate'
+                      ]
+                      and not(matches(@Image, '^[a-z][a-zA-Z0-9]*(_[a-zA-Z0-9]+)+$'))
+                    ]
+                  "/>
+        </properties>
+    </rule>
+
+    <!--Non-test methods: enforce normal lowerCamelCase naming convention -->
+    <rule name="NonTestMethodNamingConvention"
+          language="java"
+          message="Non-test methods should follow normal Java lowerCamelCase (no underscores)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="version" value="2.0"/>
+            <property name="xpath"
+                      value="
+                    //MethodDeclaration[
+                      not(Annotation/MarkerAnnotation/Name[
+                        @Image = 'Test'
+                        or @Image = 'ParameterizedTest'
+                        or @Image = 'RepeatedTest'
+                        or @Image = 'TestFactory'
+                        or @Image = 'TestTemplate'
+                      ])
+                      and not(matches(@Image, '^[a-z][a-zA-Z0-9]*$'))
+                    ]
+                  "/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml">
+        <exclude name="TooManyMethods"/>
+        <exclude name="TooManyFields"/>
+        <exclude name="ExcessiveMethodLength"/>
+        <exclude name="ExcessiveClassLength"/>
+        <exclude name="CyclomaticComplexity"/>
+        <exclude name="NPathComplexity"/>
+    </rule>
+
+</ruleset>

@@ -56,6 +56,14 @@ pmd {
     consoleOutput = true
 }
 
+tasks.named("pmdMain") {
+    ruleSetFiles = files("$rootDir/config/pmd/pmd-main.xml")
+}
+
+tasks.named("pmdTest") {
+    ruleSetFiles = files("$rootDir/config/pmd/pmd-test.xml")
+}
+
 jacocoTestCoverageVerification {
     violationRules {
         rule {
