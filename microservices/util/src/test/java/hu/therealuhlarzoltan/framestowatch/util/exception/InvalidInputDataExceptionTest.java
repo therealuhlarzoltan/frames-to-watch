@@ -1,4 +1,5 @@
-import hu.therealuhlarzoltan.framestowatch.util.exception.InvalidInputDataException;
+package hu.therealuhlarzoltan.framestowatch.util.exception;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

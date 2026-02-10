@@ -31,6 +31,7 @@
         <exclude name="FormalParameterNamingConventions"/>
         <exclude name="LocalVariableNamingConventions"/>
         <exclude name="AtLeastOneConstructor"/>
+        <exclude name="LocalVariableCouldBeFinal" />
     </rule>
 
     <!-- Test methods: enforce underscore naming convention -->

@@ -285,7 +285,7 @@ jobs:
           while IFS= read -r -d '' gw; do run_task_if_present "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
 
   python:
-    name: Python
+    name: python
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
