@@ -55,6 +55,7 @@ tasks.named('test') {
 pmd {
     consoleOutput = true
     ruleSets = []
+    toolVersion = "7.21.0"
 }
 
 def repoRoot = System.getenv("GITHUB_WORKSPACE") ?: rootDir.absolutePath
