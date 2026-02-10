@@ -1,9 +1,13 @@
 plugins {
     id 'java'
+    id 'pmd'
+    id 'jacoco'
+    id "org.owasp.dependencycheck" version "12.2.0"
+    id "org.cyclonedx.bom" version "3.1.0"
 }
 
 group = 'hu.therealuhlarzoltan.framestowatch'
-version = '1.0-SNAPSHOT'
+version = '0.0.1-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -17,4 +21,88 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+pmd {
+    consoleOutput = true
+    ruleSets = []
+    toolVersion = "7.21.0"
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def willRunPmd = graph.allTasks.any { it instanceof Pmd }
+    if (!willRunPmd) {
+        return
+    }
+
+    def ws = System.getenv("GITHUB_WORKSPACE")
+
+    File repoRoot
+    if (ws != null && !ws.trim().isEmpty()) {
+        repoRoot = file(ws)
+        logger.lifecycle("[PMD] Using GITHUB_WORKSPACE as repo root: ${repoRoot.absolutePath}")
+    } else {
+        logger.lifecycle("[PMD] GITHUB_WORKSPACE not set. Searching upwards from Gradle rootDir: ${rootDir.absolutePath}")
+
+        def d = rootDir
+        while (d != null && !new File(d, "config/pmd").isDirectory()) {
+            logger.info("[PMD] config/pmd not found in: ${d.absolutePath} -> moving to parent")
+            d = d.parentFile
+        }
+
+        if (d == null) {
+            throw new GradleException("[PMD] Could not locate 'config/pmd' by walking up from ${rootDir.absolutePath}.")
+        }
+
+        repoRoot = d
+        logger.lifecycle("[PMD] Found repo root by traversal: ${repoRoot.absolutePath}")
+    }
+
+    def pmdConfigDir = new File(repoRoot, "config/pmd")
+    def pmdMainRules = new File(pmdConfigDir, "pmd-main.xml")
+    def pmdTestRules = new File(pmdConfigDir, "pmd-test.xml")
+
+    logger.lifecycle("[PMD] Ruleset dir: ${pmdConfigDir.absolutePath}")
+    logger.lifecycle("[PMD] Main ruleset: ${pmdMainRules.absolutePath} (exists=${pmdMainRules.exists()})")
+    logger.lifecycle("[PMD] Test ruleset: ${pmdTestRules.absolutePath} (exists=${pmdTestRules.exists()})")
+
+    if (!pmdMainRules.isFile()) throw new GradleException("[PMD] Missing main ruleset file: ${pmdMainRules.absolutePath}")
+    if (!pmdTestRules.isFile()) throw new GradleException("[PMD] Missing test ruleset file: ${pmdTestRules.absolutePath}")
+
+    tasks.named("pmdMain").configure { ruleSetFiles = files(pmdMainRules) }
+    tasks.named("pmdTest").configure { ruleSetFiles = files(pmdTestRules) }
+}
+
+def jacocoExcludes = ["**/*Application.class"]
+
+jacocoTestCoverageVerification {
+    classDirectories.setFrom(
+            files(classDirectories.files.collect { fileTree(dir: it, exclude: jacocoExcludes) })
+    )
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.80
+            }
+        }
+    }
+}
+
+dependencyCheck {
+    failBuildOnCVSS = 7.0
+}
+
+tasks.named("check") {
+    dependsOn("jacocoTestCoverageVerification", "dependencyCheckAnalyze")
+}
+
+import org.cyclonedx.gradle.CyclonedxDirectTask
+
+tasks.register("cyclonedxBomRuntime", CyclonedxDirectTask) {
+    includeConfigs = ["runtimeClasspath"]
+    jsonOutput = layout.buildDirectory.file("reports/bom-runtime.json").get().asFile
+}
+
+tasks.register("cyclonedxBomFull", CyclonedxDirectTask) {
+    jsonOutput = layout.buildDirectory.file("reports/bom-full.json").get().asFile
 }

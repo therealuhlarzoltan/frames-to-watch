@@ -1,0 +1,169 @@
+<?xml version="1.0"?>
+<ruleset name="FramesToWatch PMD - Test"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        PMD rules for test sources.
+    </description>
+
+    <rule ref="category/java/multithreading.xml"/>
+
+    <rule ref="category/java/design.xml">
+        <exclude name="TooManyMethods"/>
+        <exclude name="TooManyFields"/>
+        <exclude name="NcssCount"/>
+        <exclude name="CyclomaticComplexity"/>
+        <exclude name="NPathComplexity"/>
+    </rule>
+
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="AvoidReassigningParameters"/>
+        <exclude name="UnitTestContainsTooManyAsserts"/>
+    </rule>
+
+    <rule ref="category/java/performance.xml"/>
+
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="MethodNamingConventions"/>
+        <exclude name="FieldNamingConventions"/>
+        <exclude name="FormalParameterNamingConventions"/>
+        <exclude name="LocalVariableNamingConventions"/>
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="LocalVariableCouldBeFinal" />
+    </rule>
+
+    <!-- Test methods: enforce underscore naming convention -->
+    <rule name="TestMethodNamingConvention"
+          language="java"
+          message="Test methods should follow: method_scenario_expected (underscore segments)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="xpath" value="
+              //MethodDeclaration[
+                pmd-java:hasAnnotation('org.junit.Test')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                or pmd-java:hasAnnotation('org.testng.annotations.Test')
+              ]
+              [not(matches(@Name, '^[a-z][a-zA-Z0-9]*(_[a-zA-Z0-9]+)+$'))]
+            "/>
+        </properties>
+    </rule>
+
+    <!-- Non-test methods: enforce normal lowerCamelCase naming convention -->
+    <rule name="NonTestMethodNamingConvention"
+          language="java"
+          message="Non-test methods should follow normal Java lowerCamelCase (no underscores)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="xpath" value="
+              //MethodDeclaration[
+                not(
+                  pmd-java:hasAnnotation('org.junit.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                  or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                )
+              ]
+              [not(matches(@Name, '^[a-z][a-zA-Z0-9]*$'))]
+            "/>
+        </properties>
+    </rule>
+
+    <!-- UnitTestShouldIncludeAssert: suppress for SpringBoot run_springApplication_contextLoads smoke test -->
+    <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
+        <properties>
+            <property name="violationSuppressXPath" value="
+              .[
+                self::MethodDeclaration
+                and @Name = 'run_springApplication_contextLoads'
+                and (pmd-java:hasAnnotation('org.junit.Test') or pmd-java:hasAnnotation('org.junit.jupiter.api.Test'))
+                and ancestor::ClassDeclaration[pmd-java:hasAnnotation('org.springframework.boot.test.context.SpringBootTest')]
+              ]
+            "/>
+        </properties>
+    </rule>
+
+    <rule name="NoPackagePrivateHelperMethodsInTests"
+          language="java"
+          message="Helper methods in tests must declare an explicit access modifier (prefer private)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="xpath" value="
+              //MethodDeclaration[
+                not(
+                  pmd-java:hasAnnotation('org.junit.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                  or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                )
+                and @Public = false() and @Protected = false() and @Private = false()
+              ]
+            "/>
+        </properties>
+    </rule>
+
+    <rule name="NoPackagePrivateNestedHelperClassesInTests"
+          language="java"
+          message="Nested helper classes in tests must declare an explicit access modifier (prefer private)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="xpath" value="
+              //ClassDeclaration[
+                ancestor::ClassDeclaration
+                and @Public = false() and @Protected = false() and @Private = false()
+              ]
+            "/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/codestyle.xml/CommentDefaultAccessModifier">
+        <properties>
+            <property name="violationSuppressXPath" value="
+              .[
+                (
+                  self::MethodDeclaration
+                  and (@Public = false() and @Protected = false() and @Private = false())
+                  and (
+                    pmd-java:hasAnnotation('org.junit.Test')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                    or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                    or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                  )
+                )
+                or
+                (
+                  self::ClassDeclaration
+                  and (@Public = false() and @Protected = false() and @Private = false())
+                  and (
+                    .//MethodDeclaration[
+                      pmd-java:hasAnnotation('org.junit.Test')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                      or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                      or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                    ]
+                  )
+                )
+              ]
+            "/>
+        </properties>
+    </rule>
+
+</ruleset>
