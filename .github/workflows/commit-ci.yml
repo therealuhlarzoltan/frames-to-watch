@@ -83,7 +83,6 @@ jobs:
             cd "$dir"
             chmod +x ./gradlew
 
-            # Reliable existence check
             if ./gradlew -q help --task cyclonedxBom >/dev/null 2>&1; then
               echo "Found task: cyclonedxBom"
               ./gradlew --no-daemon cyclonedxBom

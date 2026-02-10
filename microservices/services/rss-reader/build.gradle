@@ -44,11 +44,22 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     constraints {
-        testImplementation("org.assertj:assertj-core:3.27.7") {
-            because("Fixes CVE-2026-24400")
+        testImplementation("org.assertj:assertj-core") {
+            version { strictly("3.27.7") }
+            because("Fixes CVE-2026-24400 (AssertJ XXE in isXmlEqualTo)")
         }
-        testRuntimeOnly("org.assertj:assertj-core:3.27.7") {
-            because("Fixes CVE-2026-24400")
+        testRuntimeOnly("org.assertj:assertj-core") {
+            version { strictly("3.27.7") }
+            because("Fixes CVE-2026-24400 (AssertJ XXE in isXmlEqualTo)")
+        }
+    }
+}
+
+configurations.matching { it.name.toLowerCase().contains("test") }.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "org.assertj" && details.requested.name == "assertj-core") {
+            details.useVersion("3.27.7")
+            details.because("Fixes CVE-2026-24400 (AssertJ XXE in isXmlEqualTo)")
         }
     }
 }
