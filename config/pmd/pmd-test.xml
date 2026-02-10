@@ -8,7 +8,6 @@
         PMD rules for test sources.
     </description>
 
-    <rule ref="category/java/errorprone.xml"/>
     <rule ref="category/java/multithreading.xml"/>
 
     <rule ref="category/java/errorprone.xml">
@@ -17,7 +16,7 @@
 
     <rule ref="category/java/bestpractices.xml">
         <exclude name="AvoidReassigningParameters"/>
-        <exclude name="JUnitTestContainsTooManyAsserts"/>
+        <exclude name="UnitTestContainsTooManyAsserts"/>
     </rule>
 
     <rule ref="category/java/performance.xml"/>
@@ -35,7 +34,6 @@
           message="Test methods should follow: method_scenario_expected (underscore segments)."
           class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <properties>
-            <property name="xpathVersion" value="2.0"/>
             <property name="xpath" value="
                     //MethodDeclaration[
                       Annotation/MarkerAnnotation/Name[
@@ -57,7 +55,6 @@
           message="Non-test methods should follow normal Java lowerCamelCase (no underscores)."
           class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <properties>
-            <property name="xpathVersion" value="2.0"/>
             <property name="xpath" value="
                     //MethodDeclaration[
                       not(Annotation/MarkerAnnotation/Name[
@@ -91,8 +88,7 @@
     <rule ref="category/java/design.xml">
         <exclude name="TooManyMethods"/>
         <exclude name="TooManyFields"/>
-        <exclude name="ExcessiveMethodLength"/>
-        <exclude name="ExcessiveClassLength"/>
+        <exclude name="NcssCount"/>
         <exclude name="CyclomaticComplexity"/>
         <exclude name="NPathComplexity"/>
     </rule>
