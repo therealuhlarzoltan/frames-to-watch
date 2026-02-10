@@ -8,17 +8,15 @@
         PMD rules for main sources.
     </description>
 
-    <!-- PMD's standard Java rules -->
-    <rule ref="category/java/errorprone.xml">
-        <!-- Rules must be excluded in order to redefine/refine them -->
-        <exclude name="MissingSerialVersionUID"/>
+    <rule ref="category/java/design.xml"/>
+    <rule ref="category/java/multithreading.xml"/>
+    <rule ref="category/java/bestpractices.xml"/>
+    <rule ref="category/java/performance.xml"/>
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="MethodArgumentCouldBeFinal"/>
     </rule>
 
-    <!-- Custom rules here -->
-    <rule name="MissingSerialVersionUIDExceptExceptions"
-          language="java"
-          message="Serializable classes should declare serialVersionUID (exceptions are ignored)."
-          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+    <rule ref="category/java/errorprone.xml/MissingSerialVersionUID">
         <properties>
             <property name="xpath" value="
                 //ClassDeclaration
@@ -26,6 +24,17 @@
                   [not(ends-with(@SimpleName, 'Exception'))]
                   [count(ClassBody/FieldDeclaration/VariableDeclarator/VariableId[@Name='serialVersionUID']) = 0]
                   [(ImplementsList | ExtendsList)/ClassType[pmd-java:typeIs('java.io.Serializable')]]
+            "/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml/UseUtilityClass">
+        <properties>
+            <property name="violationSuppressXPath" value="
+              .[
+                self::ClassDeclaration
+                and pmd-java:hasAnnotation('org.springframework.boot.autoconfigure.SpringBootApplication')
+              ]
             "/>
         </properties>
     </rule>

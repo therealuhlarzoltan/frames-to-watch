@@ -7,7 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 class RssReaderApplicationTests {
 
     @Test
-    void contextLoads() {
+    void run_springApplication_contextLoads() {
     }
 
 }

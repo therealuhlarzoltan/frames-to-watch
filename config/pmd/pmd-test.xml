@@ -10,8 +10,12 @@
 
     <rule ref="category/java/multithreading.xml"/>
 
-    <rule ref="category/java/errorprone.xml">
-        <exclude name="MissingSerialVersionUID"/>
+    <rule ref="category/java/design.xml">
+        <exclude name="TooManyMethods"/>
+        <exclude name="TooManyFields"/>
+        <exclude name="NcssCount"/>
+        <exclude name="CyclomaticComplexity"/>
+        <exclude name="NPathComplexity"/>
     </rule>
 
     <rule ref="category/java/bestpractices.xml">
@@ -26,71 +30,65 @@
         <exclude name="FieldNamingConventions"/>
         <exclude name="FormalParameterNamingConventions"/>
         <exclude name="LocalVariableNamingConventions"/>
+        <exclude name="AtLeastOneConstructor"/>
     </rule>
 
-    <!--Test methods: enforce underscore naming convention -->
+    <!-- Test methods: enforce underscore naming convention -->
     <rule name="TestMethodNamingConvention"
           language="java"
           message="Test methods should follow: method_scenario_expected (underscore segments)."
           class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <properties>
             <property name="xpath" value="
-                    //MethodDeclaration[
-                      Annotation/MarkerAnnotation/Name[
-                        @Image = 'Test'
-                        or @Image = 'ParameterizedTest'
-                        or @Image = 'RepeatedTest'
-                        or @Image = 'TestFactory'
-                        or @Image = 'TestTemplate'
-                      ]
-                      and not(matches(@Image, '^[a-z][a-zA-Z0-9]*(_[a-zA-Z0-9]+)+$'))
-                    ]
-                  "/>
+              //MethodDeclaration[
+                pmd-java:hasAnnotation('org.junit.Test')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                or pmd-java:hasAnnotation('org.testng.annotations.Test')
+              ]
+              [not(matches(@Name, '^[a-z][a-zA-Z0-9]*(_[a-zA-Z0-9]+)+$'))]
+            "/>
         </properties>
     </rule>
 
-    <!--Non-test methods: enforce normal lowerCamelCase naming convention -->
+    <!-- Non-test methods: enforce normal lowerCamelCase naming convention -->
     <rule name="NonTestMethodNamingConvention"
           language="java"
           message="Non-test methods should follow normal Java lowerCamelCase (no underscores)."
           class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <properties>
             <property name="xpath" value="
-                    //MethodDeclaration[
-                      not(Annotation/MarkerAnnotation/Name[
-                        @Image = 'Test'
-                        or @Image = 'ParameterizedTest'
-                        or @Image = 'RepeatedTest'
-                        or @Image = 'TestFactory'
-                        or @Image = 'TestTemplate'
-                      ])
-                      and not(matches(@Image, '^[a-z][a-zA-Z0-9]*$'))
-                    ]
-                  "/>
-        </properties>
-    </rule>
-
-    <rule name="MissingSerialVersionUIDExceptExceptions"
-          language="java"
-          message="Serializable classes should declare serialVersionUID (exceptions are ignored)."
-          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
-        <properties>
-            <property name="xpath" value="
-                //ClassDeclaration
-                  [@Interface = false()]
-                  [not(ends-with(@SimpleName, 'Exception'))]
-                  [count(ClassBody/FieldDeclaration/VariableDeclarator/VariableId[@Name='serialVersionUID']) = 0]
-                  [(ImplementsList | ExtendsList)/ClassType[pmd-java:typeIs('java.io.Serializable')]]
+              //MethodDeclaration[
+                not(
+                  pmd-java:hasAnnotation('org.junit.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.Test')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.RepeatedTest')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestFactory')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.api.TestTemplate')
+                  or pmd-java:hasAnnotation('org.junit.jupiter.params.ParameterizedTest')
+                  or pmd-java:hasAnnotation('org.testng.annotations.Test')
+                )
+              ]
+              [not(matches(@Name, '^[a-z][a-zA-Z0-9]*$'))]
             "/>
         </properties>
     </rule>
 
-    <rule ref="category/java/design.xml">
-        <exclude name="TooManyMethods"/>
-        <exclude name="TooManyFields"/>
-        <exclude name="NcssCount"/>
-        <exclude name="CyclomaticComplexity"/>
-        <exclude name="NPathComplexity"/>
+    <!-- UnitTestShouldIncludeAssert: suppress for SpringBoot crun_springApplication_contextLoads smoke test -->
+    <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
+        <properties>
+            <property name="violationSuppressXPath" value="
+              .[
+                self::MethodDeclaration
+                and @Name = 'run_springApplication_contextLoads'
+                and (pmd-java:hasAnnotation('org.junit.Test') or pmd-java:hasAnnotation('org.junit.jupiter.api.Test'))
+                and ancestor::ClassDeclaration[pmd-java:hasAnnotation('org.springframework.boot.test.context.SpringBootTest')]
+              ]
+            "/>
+        </properties>
     </rule>
 
 </ruleset>
