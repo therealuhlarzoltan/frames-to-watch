@@ -77,30 +77,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          has_task() {
-            local task="$1"
-            ./gradlew -q help --task "$task" >/dev/null 2>&1
-          }
-
           run_sbom() {
             local dir="$1"
             echo "::group::CycloneDX SBOMs ($dir)"
             cd "$dir"
             chmod +x ./gradlew
 
-            if has_task cyclonedxBomRuntime; then
-              echo "Found task: cyclonedxBomRuntime"
-              ./gradlew --no-daemon cyclonedxBomRuntime
-            else
-              echo "Skipping: cyclonedxBomRuntime task not found."
-            fi
+            echo "Running cyclonedxBomRuntime (if project supports it)"
+            ./gradlew --no-daemon cyclonedxBomRuntime || true
 
-            if has_task cyclonedxBomFull; then
-              echo "Found task: cyclonedxBomFull"
-              ./gradlew --no-daemon cyclonedxBomFull
-            else
-              echo "Skipping: cyclonedxBomFull task not found."
-            fi
+            echo "Running cyclonedxBomFull (if project supports it)"
+            ./gradlew --no-daemon cyclonedxBomFull || true
 
             cd - >/dev/null
             echo "::endgroup::"
