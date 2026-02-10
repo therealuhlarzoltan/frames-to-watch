@@ -28,14 +28,13 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::JSCPD - Duplicate code check (Java)"
-          npx --yes jscpd \
-            --path microservices \
+          npx --yes jscpd@4.0.8 --version
+          npx --yes jscpd@4.0.8 \
+            --config .jscpd.json \
+            --format java \
             --pattern "**/*.java" \
-            --ignore "**/build/**,**/target/**,**/.gradle/**,**/node_modules/**,**/.venv/**,**/dist/**,**/out/**,**/__pycache__/**" \
-            --min-lines 5 \
-            --min-tokens 50 \
-            --threshold 0 \
-            --reporters console
+            --reporters console \
+            --verbose
           echo "::endgroup::"
 
       - name: Duplicate code check (JavaScript/TypeScript)
@@ -43,14 +42,13 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::JSCPD - Duplicate code check (JavaScript/TypeScript)"
-          npx --yes jscpd \
-            --path microservices \
+          npx --yes jscpd@4.0.8 --version
+          npx --yes jscpd@4.0.8 \
+            --config .jscpd.json \
+            --format javascript,typescript \
             --pattern "**/*.{js,jsx,ts,tsx}" \
-            --ignore "**/build/**,**/target/**,**/.gradle/**,**/node_modules/**,**/.venv/**,**/dist/**,**/out/**,**/__pycache__/**" \
-            --min-lines 5 \
-            --min-tokens 50 \
-            --threshold 0 \
-            --reporters console
+            --reporters console \
+            --verbose
           echo "::endgroup::"
 
       - name: Duplicate code check (Python)
@@ -58,14 +56,13 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::JSCPD - Duplicate code check (Python)"
-          npx --yes jscpd \
-            --path microservices \
+          npx --yes jscpd@4.0.8 --version
+          npx --yes jscpd@4.0.8 \
+            --config .jscpd.json \
+            --format python \
             --pattern "**/*.py" \
-            --ignore "**/build/**,**/target/**,**/.gradle/**,**/node_modules/**,**/.venv/**,**/dist/**,**/out/**,**/__pycache__/**" \
-            --min-lines 5 \
-            --min-tokens 50 \
-            --threshold 0 \
-            --reporters console
+            --reporters console \
+            --verbose
           echo "::endgroup::"
 
   security-scan:
