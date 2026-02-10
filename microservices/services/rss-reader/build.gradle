@@ -44,8 +44,13 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     constraints {
-        testImplementation("org.assertj:assertj-core:3.27.7") {
-            because("Fixes CVE-2026-24400 (XXE in AssertJ isXmlEqualTo)")
+        constraints {
+            testImplementation("org.assertj:assertj-core:3.27.7") {
+                because("Fixes CVE-2026-24400")
+            }
+            testRuntimeOnly("org.assertj:assertj-core:3.27.7") {
+                because("Fixes CVE-2026-24400")
+            }
         }
     }
 }
