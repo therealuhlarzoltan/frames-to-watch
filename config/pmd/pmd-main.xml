@@ -39,4 +39,14 @@
         </properties>
     </rule>
 
+    <rule ref="category/java/codestyle.xml/LongVariable">
+        <properties>
+            <property name="violationSuppressXPath" value="
+              .[
+                ancestor::ClassDeclaration[matches(@SimpleName, '.*Exception$')]
+              ]
+            "/>
+        </properties>
+    </rule>
+
 </ruleset>

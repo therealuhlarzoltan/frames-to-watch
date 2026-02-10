@@ -30,7 +30,7 @@ jobs:
           echo "::group::JSCPD - Duplicate code check (Java)"
           npx --yes jscpd@4.0.8 --version
           npx --yes jscpd@4.0.8 \
-            --config .jscpd.json \
+            --config config/jscpd/.jscpd.json \
             --format java \
             --pattern "**/*.java" \
             --reporters console \
@@ -44,7 +44,7 @@ jobs:
           echo "::group::JSCPD - Duplicate code check (JavaScript/TypeScript)"
           npx --yes jscpd@4.0.8 --version
           npx --yes jscpd@4.0.8 \
-            --config .jscpd.json \
+            --config config/jscpd/.jscpd.json \
             --format javascript,typescript \
             --pattern "**/*.{js,jsx,ts,tsx}" \
             --reporters console \
@@ -58,7 +58,7 @@ jobs:
           echo "::group::JSCPD - Duplicate code check (Python)"
           npx --yes jscpd@4.0.8 --version
           npx --yes jscpd@4.0.8 \
-            --config .jscpd.json \
+            --config config/jscpd/.jscpd.json \
             --format python \
             --pattern "**/*.py" \
             --reporters console \
