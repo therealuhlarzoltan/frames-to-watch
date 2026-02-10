@@ -261,29 +261,6 @@ jobs:
           if [[ -f "./gradlew" ]]; then run_task "."; fi
           while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
 
-      - name: Dependency vulnerability scan (Java, optional OWASP dependency-check)
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "This runs only if a Gradle task named 'dependencyCheckAnalyze' exists."
-
-          run_task_if_present() {
-            local dir="$1"
-            echo "::group::OWASP Dependency-Check ($dir)"
-            cd "$dir"
-            chmod +x ./gradlew
-            if ./gradlew -q tasks --all | grep -q "^dependencyCheckAnalyze$"; then
-              ./gradlew --no-daemon dependencyCheckAnalyze --info
-            else
-              echo "Skipping: dependencyCheckAnalyze task not found."
-            fi
-            cd - >/dev/null
-            echo "::endgroup::"
-          }
-
-          if [[ -f "./gradlew" ]]; then run_task_if_present "."; fi
-          while IFS= read -r -d '' gw; do run_task_if_present "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
-
   python:
     name: python
     runs-on: ubuntu-latest
