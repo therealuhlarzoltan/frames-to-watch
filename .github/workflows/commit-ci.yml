@@ -76,23 +76,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          
+
           run_sbom() {
             local dir="$1"
             echo "::group::CycloneDX SBOM ($dir)"
             cd "$dir"
             chmod +x ./gradlew
-          
-            if ./gradlew -q tasks --all | grep -q "^cyclonedxBom$"; then
+
+            # Reliable existence check
+            if ./gradlew -q help --task cyclonedxBom >/dev/null 2>&1; then
+              echo "Found task: cyclonedxBom"
               ./gradlew --no-daemon cyclonedxBom
             else
               echo "Skipping: cyclonedxBom task not found."
+              echo "Available tasks (filtered):"
+              ./gradlew -q tasks --all | sed -n '1,200p'
             fi
-          
+
             cd - >/dev/null
             echo "::endgroup::"
           }
-          
+
           if [[ -f "./gradlew" ]]; then run_sbom "."; fi
           while IFS= read -r -d '' gw; do
             run_sbom "$(dirname "$gw")"
