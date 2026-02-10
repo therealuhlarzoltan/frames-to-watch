@@ -273,7 +273,7 @@ jobs:
             cd "$dir"
             chmod +x ./gradlew
             if ./gradlew -q tasks --all | grep -q "^dependencyCheckAnalyze$"; then
-              ./gradlew --no-daemon dependencyCheckAnalyze
+              ./gradlew --no-daemon dependencyCheckAnalyze --info
             else
               echo "Skipping: dependencyCheckAnalyze task not found."
             fi
