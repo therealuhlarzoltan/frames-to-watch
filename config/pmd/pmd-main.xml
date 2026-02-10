@@ -9,15 +9,24 @@
     </description>
 
     <!-- PMD's standard Java rules -->
-    <rule ref="category/java/bestpractices.xml">
+    <rule ref="category/java/error-prone.xml">
         <!-- Rules must be excluded in order to redefine/refine them -->
         <exclude name="MissingSerialVersionUID"/>
     </rule>
 
     <!-- Custom rules here -->
-    <rule ref="category/java/bestpractices.xml/MissingSerialVersionUID">
+    <rule name="MissingSerialVersionUIDExceptExceptions"
+          language="java"
+          message="Serializable classes should declare serialVersionUID (exceptions are ignored)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
         <properties>
-            <property name="ignoreClassNames" value=".*Exception"/>
+            <property name="xpath" value="
+                //ClassDeclaration
+                  [@Interface = false()]
+                  [not(ends-with(@SimpleName, 'Exception'))]
+                  [count(ClassBody/FieldDeclaration/VariableDeclarator/VariableId[@Name='serialVersionUID']) = 0]
+                  [(ImplementsList | ExtendsList)/ClassType[pmd-java:typeIs('java.io.Serializable')]]
+            "/>
         </properties>
     </rule>
 

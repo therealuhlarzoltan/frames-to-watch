@@ -11,8 +11,11 @@
     <rule ref="category/java/errorprone.xml"/>
     <rule ref="category/java/multithreading.xml"/>
 
-    <rule ref="category/java/bestpractices.xml">
+    <rule ref="category/java/error-prone.xml">
         <exclude name="MissingSerialVersionUID"/>
+    </rule>
+
+    <rule ref="category/java/bestpractices.xml">
         <exclude name="AvoidReassigningParameters"/>
         <exclude name="JUnitTestContainsTooManyAsserts"/>
     </rule>
@@ -67,6 +70,21 @@
                       and not(matches(@Image, '^[a-z][a-zA-Z0-9]*$'))
                     ]
                   "/>
+        </properties>
+    </rule>
+
+    <rule name="MissingSerialVersionUIDExceptExceptions"
+          language="java"
+          message="Serializable classes should declare serialVersionUID (exceptions are ignored)."
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <properties>
+            <property name="xpath" value="
+                //ClassDeclaration
+                  [@Interface = false()]
+                  [not(ends-with(@SimpleName, 'Exception'))]
+                  [count(ClassBody/FieldDeclaration/VariableDeclarator/VariableId[@Name='serialVersionUID']) = 0]
+                  [(ImplementsList | ExtendsList)/ClassType[pmd-java:typeIs('java.io.Serializable')]]
+            "/>
         </properties>
     </rule>
 
