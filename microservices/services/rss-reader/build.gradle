@@ -54,14 +54,17 @@ tasks.named('test') {
 
 pmd {
     consoleOutput = true
+    ruleSetFiles = []
 }
 
+def repoRoot = System.getenv("GITHUB_WORKSPACE") ?: rootDir.absolutePath
+
 tasks.named("pmdMain") {
-    ruleSetFiles = files("$rootDir/config/pmd/pmd-main.xml")
+    ruleSetFiles = files("$repoRoot/config/pmd/pmd-main.xml")
 }
 
 tasks.named("pmdTest") {
-    ruleSetFiles = files("$rootDir/config/pmd/pmd-test.xml")
+    ruleSetFiles = files("$repoRoot/config/pmd/pmd-test.xml")
 }
 
 jacocoTestCoverageVerification {
