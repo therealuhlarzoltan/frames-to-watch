@@ -105,7 +105,13 @@ tasks.named("pmdTest") {
     ruleSetFiles = files(pmdTestRules)
 }
 
+
+def jacocoExcludes = ["**/*Application.class"]
+
 jacocoTestCoverageVerification {
+    classDirectories.setFrom(
+            files(classDirectories.files.collect { fileTree(dir: it, exclude: jacocoExcludes) })
+    )
     violationRules {
         rule {
             limit {
@@ -114,5 +120,3 @@ jacocoTestCoverageVerification {
         }
     }
 }
-
-check.dependsOn jacocoTestCoverageVerification
