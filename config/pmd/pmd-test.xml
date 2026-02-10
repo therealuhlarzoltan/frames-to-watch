@@ -78,7 +78,7 @@
         </properties>
     </rule>
 
-    <!-- UnitTestShouldIncludeAssert: suppress for SpringBoot crun_springApplication_contextLoads smoke test -->
+    <!-- UnitTestShouldIncludeAssert: suppress for SpringBoot run_springApplication_contextLoads smoke test -->
     <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
         <properties>
             <property name="violationSuppressXPath" value="
