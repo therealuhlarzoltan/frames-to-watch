@@ -142,7 +142,9 @@ jobs:
               --scanners vuln \
               --severity HIGH,CRITICAL \
               --ignore-unfixed \
-              --exit-code 1
+              --format table \
+              --exit-code 1 \
+              --debug
             echo "::endgroup::"
           done < <(find microservices -type f -path "*/build/*" \( -iname "*bom*.json" -o -iname "*bom*.xml" \) | sort)
 
