@@ -155,6 +155,7 @@ jobs:
             echo "::group::Trivy SBOM license ($f)"
             trivy sbom "$f" \
               --scanners license \
+              --ignorefile config/trivy/.trivyignore \
               --exit-code 1
             echo "::endgroup::"
           done < <(
