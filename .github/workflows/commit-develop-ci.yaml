@@ -118,8 +118,8 @@ jobs:
         run: |
           set -euo pipefail
           
-          API_VER='${{ needs.shared-library-pointer-update.outputs.apiVersion }}'
-          UTIL_VER='${{ needs.shared-library-pointer-update.outputs.utilVersion }}'
+          API_VER='${{ needs.shared-library-pointer-update-develop.outputs.apiVersion }}'
+          UTIL_VER='${{ needs.shared-library-pointer-update-develop.outputs.utilVersion }}'
           
           echo "ORG_GRADLE_PROJECT_apiVersion=${API_VER}" >> "$GITHUB_ENV"
           echo "ORG_GRADLE_PROJECT_utilVersion=${UTIL_VER}" >> "$GITHUB_ENV"
@@ -287,8 +287,8 @@ jobs:
         run: |
           set -euo pipefail
           
-          API_VER='${{ needs.shared-library-pointer-update.outputs.apiVersion }}'
-          UTIL_VER='${{ needs.shared-library-pointer-update.outputs.utilVersion }}'
+          API_VER='${{ needs.shared-library-pointer-update-develop.outputs.apiVersion }}'
+          UTIL_VER='${{ needs.shared-library-pointer-update.outputs-develop.utilVersion }}'
           
           echo "ORG_GRADLE_PROJECT_apiVersion=${API_VER}" >> "$GITHUB_ENV"
           echo "ORG_GRADLE_PROJECT_utilVersion=${UTIL_VER}" >> "$GITHUB_ENV"
