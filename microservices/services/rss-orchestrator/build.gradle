@@ -32,8 +32,8 @@ ext {
 }
 
 dependencies {
-    implementation project(":api")
-    implementation project(":util")
+    implementation "hu.therealuhlarzoltan.framestowatch:api:${property('apiVersion')}"
+    implementation "hu.therealuhlarzoltan.framestowatch:util:${property('utilVersion')}"
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
