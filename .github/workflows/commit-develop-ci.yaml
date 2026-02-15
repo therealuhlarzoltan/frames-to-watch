@@ -113,15 +113,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Overwrite microservices/gradle.properties from resolved versions
+      - name: Apply shared library versions (gradle.properties + env variables)
         shell: bash
         run: |
           set -euo pipefail
+          
+          API_VER='${{ needs.shared-library-pointer-update.outputs.apiVersion }}'
+          UTIL_VER='${{ needs.shared-library-pointer-update.outputs.utilVersion }}'
+          
+          echo "ORG_GRADLE_PROJECT_apiVersion=${API_VER}" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_utilVersion=${UTIL_VER}" >> "$GITHUB_ENV"
+          
           mkdir -p microservices
           cat > microservices/gradle.properties <<EOF
-          apiVersion=${{ needs.shared-library-pointer-update.outputs.apiVersion }}
-          utilVersion=${{ needs.shared-library-pointer-update.outputs.utilVersion }}
+          apiVersion=${API_VER}
+          utilVersion=${UTIL_VER}
           EOF
+          
+          echo "::group::Resolved versions"
+          echo "apiVersion=${API_VER}"
+          echo "utilVersion=${UTIL_VER}"
+          echo "::endgroup::"
           
           echo "::group::microservices/gradle.properties"
           cat microservices/gradle.properties
@@ -270,15 +282,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Overwrite microservices/gradle.properties from resolved versions
+      - name: Apply shared library versions (gradle.properties + env variables)
         shell: bash
         run: |
           set -euo pipefail
+          
+          API_VER='${{ needs.shared-library-pointer-update.outputs.apiVersion }}'
+          UTIL_VER='${{ needs.shared-library-pointer-update.outputs.utilVersion }}'
+          
+          echo "ORG_GRADLE_PROJECT_apiVersion=${API_VER}" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_utilVersion=${UTIL_VER}" >> "$GITHUB_ENV"
+          
           mkdir -p microservices
           cat > microservices/gradle.properties <<EOF
-          apiVersion=${{ needs.shared-library-pointer-update.outputs.apiVersion }}
-          utilVersion=${{ needs.shared-library-pointer-update.outputs.utilVersion }}
+          apiVersion=${API_VER}
+          utilVersion=${UTIL_VER}
           EOF
+          
+          echo "::group::Resolved versions"
+          echo "apiVersion=${API_VER}"
+          echo "utilVersion=${UTIL_VER}"
+          echo "::endgroup::"
           
           echo "::group::microservices/gradle.properties"
           cat microservices/gradle.properties
