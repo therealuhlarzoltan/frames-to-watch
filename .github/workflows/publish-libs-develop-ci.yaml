@@ -1,0 +1,85 @@
+name: publish-develop-libraries
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: publish-develop-libraries
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v6
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Compute develop version
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "DEV_VERSION=0.0.0-develop-${SHORT_SHA}" >> "$GITHUB_ENV"
+          echo "Dev version: $DEV_VERSION"
+
+      - name: Publish (api)
+        working-directory: microservices/api
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          VERSION: ${{ env.DEV_VERSION }}
+        run: ./gradlew --no-daemon publish
+
+      - name: Publish (util)
+        working-directory: microservices/util
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          VERSION: ${{ env.DEV_VERSION }}
+        run: ./gradlew --no-daemon publish
+
+      - name: Update pointer files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci/pointers
+          echo "${DEV_VERSION}" > ci/pointers/latest-develop-api-version.txt
+          echo "${DEV_VERSION}" > ci/pointers/latest-develop-util-version.txt
+
+          echo "::group::Pointer files"
+          ls -la ci/pointers
+          cat ci/pointers/latest-develop-api-version.txt
+          cat ci/pointers/latest-develop-util-version.txt
+          echo "::endgroup::"
+
+      - name: Commit pointer files (skip CI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add ci/pointers/latest-develop-*-version.txt
+
+          if git diff --cached --quiet; then
+            echo "No pointer changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(ci): update latest develop library versions [skip ci]"
+          git push origin HEAD:develop
