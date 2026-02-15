@@ -1,13 +1,45 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id 'pmd'
     id 'jacoco'
     id "org.owasp.dependencycheck" version "12.2.0"
     id "org.cyclonedx.bom" version "3.1.0"
+    id 'maven-publish'
 }
 
+def ref = System.getenv("GITHUB_REF") ?: ""
+def refName = System.getenv("GITHUB_REF_NAME") ?: ""
+def sha = (System.getenv("GITHUB_SHA") ?: "local").take(7)
+
 group = 'hu.therealuhlarzoltan.framestowatch'
-version = '0.0.1-SNAPSHOT'
+version = ref.startsWith("refs/tags/v")
+        ? refName.substring(1)          // v1.2.3 -> 1.2.3
+        : "0.0.0-develop-${sha}"        // develop -> unique every time
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+publishing {
+    publications {
+        gpr(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/therealuhlarzoltan/frames-to-watch")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user")
+                password = System.getenv("GITHUB_TOKEN") ?: project.findProperty("gpr.key")
+            }
+        }
+    }
+}
 
 repositories {
     mavenCentral()
