@@ -141,6 +141,9 @@ jobs:
           echo "::endgroup::"
 
       - name: Generate SBOMs (CycloneDX)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -331,6 +334,9 @@ jobs:
           echo "::endgroup::"
 
       - name: Static analysis (Java main sources, PMD)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -349,6 +355,9 @@ jobs:
           while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
 
       - name: Static analysis (Java test sources, PMD)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -367,6 +376,9 @@ jobs:
           while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
 
       - name: Build (Java)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -385,6 +397,9 @@ jobs:
           while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
 
       - name: Unit tests (Java)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -403,6 +418,9 @@ jobs:
           while IFS= read -r -d '' gw; do run_task "$(dirname "$gw")"; done < <(find microservices -type f -name gradlew -print0)
 
       - name: Coverage gate (Java, JaCoCo >= 80%)
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
