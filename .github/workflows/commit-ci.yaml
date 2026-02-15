@@ -4,6 +4,7 @@ on:
   push:
     paths-ignore:
       - "ci/pointers/**"
+      - ".github/workflows/**"
 
 concurrency:
   group: commit-ci-${{ github.ref }}
