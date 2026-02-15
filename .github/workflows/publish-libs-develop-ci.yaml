@@ -34,8 +34,9 @@ jobs:
         run: |
           set -euo pipefail
           SHORT_SHA="${GITHUB_SHA::7}"
-          echo "DEV_VERSION=0.0.0-develop-${SHORT_SHA}" >> "$GITHUB_ENV"
-          echo "Dev version: $DEV_VERSION"
+          DEV_VERSION="0.0.0-develop-${SHORT_SHA}"
+          echo "DEV_VERSION=${DEV_VERSION}" >> "$GITHUB_ENV"
+          echo "Dev version: ${DEV_VERSION}"
 
       - name: Publish (api)
         working-directory: microservices/api
@@ -43,7 +44,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
           VERSION: ${{ env.DEV_VERSION }}
-        run: ./gradlew --no-daemon publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew --no-daemon publish
 
       - name: Publish (util)
         working-directory: microservices/util
@@ -51,7 +56,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
           VERSION: ${{ env.DEV_VERSION }}
-        run: ./gradlew --no-daemon publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew --no-daemon publish
 
       - name: Update pointer files
         shell: bash
