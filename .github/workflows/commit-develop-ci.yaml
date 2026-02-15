@@ -1,7 +1,12 @@
-name: commit-ci
+name: commit-develop-ci
 
 on:
   push:
+    branches-ignore:
+      - "main"
+    paths-ignore:
+      - "ci/pointers/**"
+      - ".github/workflows/**"
 
 concurrency:
   group: commit-ci-${{ github.ref }}
@@ -11,6 +16,41 @@ permissions:
   contents: read
 
 jobs:
+  shared-library-pointer-update-develop:
+    name: shared-library-pointer-update-develop
+    runs-on: ubuntu-latest
+    outputs:
+      apiVersion: ${{ steps.ptr.outputs.apiVersion }}
+      utilVersion: ${{ steps.ptr.outputs.utilVersion }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Read shared library pointers
+        id: ptr
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_PTR="ci/pointers/latest-develop-api-version.txt"
+          UTIL_PTR="ci/pointers/latest-develop-util-version.txt"
+
+          [[ -f "$API_PTR" ]]  || { echo "Missing pointer file: $API_PTR"; exit 1; }
+          [[ -f "$UTIL_PTR" ]] || { echo "Missing pointer file: $UTIL_PTR"; exit 1; }
+
+          API_VER="$(tr -d ' \t\r\n' < "$API_PTR")"
+          UTIL_VER="$(tr -d ' \t\r\n' < "$UTIL_PTR")"
+
+          [[ -n "$API_VER" ]]  || { echo "Empty version in $API_PTR"; exit 1; }
+          [[ -n "$UTIL_VER" ]] || { echo "Empty version in $UTIL_PTR"; exit 1; }
+
+          echo "apiVersion=$API_VER"  >> "$GITHUB_OUTPUT"
+          echo "utilVersion=$UTIL_VER" >> "$GITHUB_OUTPUT"
+
+          echo "Resolved versions:"
+          echo " - apiVersion=$API_VER"
+          echo " - utilVersion=$UTIL_VER"
+
   duplicate-code-check:
     name: duplicate-code-check
     runs-on: ubuntu-latest
@@ -68,9 +108,24 @@ jobs:
   security-scan:
     name: security-scan
     runs-on: ubuntu-latest
+    needs: shared-library-pointer-update-develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Overwrite microservices/gradle.properties from resolved versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p microservices
+          cat > microservices/gradle.properties <<EOF
+          apiVersion=${{ needs.shared-library-pointer-update.outputs.apiVersion }}
+          utilVersion=${{ needs.shared-library-pointer-update.outputs.utilVersion }}
+          EOF
+          
+          echo "::group::microservices/gradle.properties"
+          cat microservices/gradle.properties
+          echo "::endgroup::"
 
       - name: Generate SBOMs (CycloneDX)
         shell: bash
@@ -210,9 +265,24 @@ jobs:
   java:
     name: java
     runs-on: ubuntu-latest
+    needs: shared-library-pointer-update-develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Overwrite microservices/gradle.properties from resolved versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p microservices
+          cat > microservices/gradle.properties <<EOF
+          apiVersion=${{ needs.shared-library-pointer-update.outputs.apiVersion }}
+          utilVersion=${{ needs.shared-library-pointer-update.outputs.utilVersion }}
+          EOF
+          
+          echo "::group::microservices/gradle.properties"
+          cat microservices/gradle.properties
+          echo "::endgroup::"
 
       - name: Set up Java
         uses: actions/setup-java@v5
