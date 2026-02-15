@@ -67,6 +67,37 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers-kafka'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    constraints {
+        implementation("commons-beanutils:commons-beanutils") {
+            version { strictly("1.11.0") }
+            because("Fixes CVE-2025-48734 (Commons BeanUtils PropertyUtilsBean enum declaredClass property issue)")
+        }
+
+        implementation("org.lz4:lz4-java") {
+            version { strictly("1.8.1") }
+            because("Fixes CVE-2025-12183 (lz4-java OOB memory operations leading to DoS/info disclosure)")
+        }
+
+        testImplementation("org.assertj:assertj-core") {
+            version { strictly("3.27.7") }
+            because("Fixes CVE-2026-24400 (AssertJ XXE in isXmlEqualTo)")
+        }
+        testRuntimeOnly("org.assertj:assertj-core") {
+            version { strictly("3.27.7") }
+            because("Fixes CVE-2026-24400 (AssertJ XXE in isXmlEqualTo)")
+        }
+    }
+}
+
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "org.assertj" && details.requested.name == "assertj-core"
+                && details.target.name.toLowerCase().contains("test")) {
+            details.useVersion("3.27.7")
+            details.because("Fixes CVE-2026-24400 (AssertJ XXE in isXmlEqualTo)")
+        }
+    }
 }
 
 dependencyManagement {
