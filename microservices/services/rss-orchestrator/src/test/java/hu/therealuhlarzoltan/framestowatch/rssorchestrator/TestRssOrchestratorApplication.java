@@ -2,7 +2,8 @@ package hu.therealuhlarzoltan.framestowatch.rssorchestrator;
 
 import org.springframework.boot.SpringApplication;
 
-public class TestRssOrchestratorApplication {
+@SuppressWarnings("PMD.MethodArgumentCouldBeFinal")
+public final class TestRssOrchestratorApplication {
 
     private TestRssOrchestratorApplication() {
         // Avoiding instantiation
