@@ -1,0 +1,11 @@
+{
+  "hosts": [
+    "unix:///var/run/docker.sock",
+    "tcp://192.168.247.20:2376"
+  ],
+  "tls": true,
+  "tlsverify": true,
+  "tlscacert": "/etc/docker/tls/ca.pem",
+  "tlscert": "/etc/docker/tls/server-cert.pem",
+  "tlskey": "/etc/docker/tls/server-key.pem"
+}
