@@ -1,0 +1,16 @@
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    container_name: jenkins-controller
+
+    restart: unless-stopped
+
+    ports:
+      - "192.168.247.10:8080:8080"
+      - "192.168.247.10:5000:5000"
+
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx2g"
+
+    volumes:
+      - /srv/jenkins/home:/var/jenkins_home
