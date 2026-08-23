@@ -22,3 +22,9 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Jenkins/Docker PKI generated material
+infra/jenkins/pki/generated/
+infra/jenkins/**/ca-key.pem
+infra/jenkins/**/server-key.pem
+infra/jenkins/**/key.pem
