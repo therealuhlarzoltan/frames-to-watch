@@ -1,0 +1,19 @@
+pipeline {
+    agent {
+        label 'docker-agent'
+    }
+
+    stages {
+        stage('Test Docker Agent') {
+            steps {
+                sh '''
+                    echo "Running on Docker agent"
+                    hostname
+                    id
+                    pwd
+                    java -version
+                '''
+            }
+        }
+    }
+}
