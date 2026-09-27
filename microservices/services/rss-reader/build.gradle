@@ -10,7 +10,7 @@ plugins {
 }
 
 group = 'hu.therealuhlarzoltan.framestowatch'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.0-SNAPSHOT'
 description = 'rss-reader'
 
 java {
@@ -30,8 +30,8 @@ repositories {
     maven {
         url = uri("https://maven.pkg.github.com/therealuhlarzoltan/frames-to-watch")
         credentials {
-            username = System.getenv("GITHUB_ACTOR")
-            password = System.getenv("GITHUB_TOKEN")
+            username = System.getenv("GITHUB_ACTOR") ?: project.findProperty("gpr.user")
+            password = System.getenv("GITHUB_TOKEN") ?: project.findProperty("gpr.key")
         }
     }
 }
@@ -41,8 +41,8 @@ ext {
 }
 
 dependencies {
-    implementation "hu.therealuhlarzoltan.framestowatch:api:${property('apiVersion')}"
-    implementation "hu.therealuhlarzoltan.framestowatch:util:${property('utilVersion')}"
+    implementation "hu.therealuhlarzoltan.framestowatch:api:0.0.0-develop-98da4a4"
+    implementation "hu.therealuhlarzoltan.framestowatch:util:0.0.0-develop-98da4a4"
 
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j'
