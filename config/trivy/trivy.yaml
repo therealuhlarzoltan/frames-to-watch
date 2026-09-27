@@ -1,0 +1,6 @@
+license:
+  ignored:
+    - "LGPL-2.1"
+    - "EPL-1.0"
+    - "GPL-2.0-with-classpath-exception"
+    - "GNU Lesser General Public License"

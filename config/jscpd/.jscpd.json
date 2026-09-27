@@ -1,0 +1,18 @@
+{
+  "path": ["../../microservices"],
+  "pattern": "**/*.{java,kt,js,jsx,ts,tsx,py}",
+  "ignore": [
+    "**/build/**",
+    "**/target/**",
+    "**/.gradle/**",
+    "**/node_modules/**",
+    "**/.venv/**",
+    "**/dist/**",
+    "**/out/**",
+    "**/__pycache__/**"
+  ],
+  "minLines": 5,
+  "minTokens": 50,
+  "reporters": ["console"],
+  "exitCode": 1
+}

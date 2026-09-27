@@ -1,0 +1,198 @@
+name: publish-gradle-develop
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  actions: read
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-develop-artifacts
+  cancel-in-progress: false
+
+jobs:
+  publish-gradle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout pushed commit
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Discover Gradle builds
+        id: discover
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          files = subprocess.check_output(["git", "ls-files", "-z"])
+          paths = [os.fsdecode(path) for path in files.split(b"\0") if path]
+
+          roots = sorted({
+              os.path.dirname(path) or "."
+              for path in paths
+              if os.path.basename(path) in {"settings.gradle", "settings.gradle.kts"}
+          })
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print("builds=" + json.dumps(roots, separators=(",", ":")), file=output)
+          PY
+
+      - name: Resolve changed builds and snapshot versions
+        id: resolve
+        env:
+          BUILDS_JSON: ${{ steps.discover.outputs.builds }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          workflow_path="${GITHUB_WORKFLOW_REF%%@*}"
+          workflow_file="${workflow_path##*/}"
+
+          last_success="$(gh run list \
+            --workflow "$workflow_file" \
+            --branch develop \
+            --event push \
+            --status success \
+            --limit 1 \
+            --json headSha \
+            --jq '.[0].headSha // ""')"
+
+          LAST_SUCCESS_SHA="$last_success" python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          workspace = Path(os.environ["GITHUB_WORKSPACE"])
+          roots = json.loads(os.environ["BUILDS_JSON"])
+
+          def git(*args):
+              return subprocess.check_output(["git", *args], cwd=workspace)
+
+          baseline = os.environ["LAST_SUCCESS_SHA"]
+          baseline_is_ancestor = bool(baseline) and subprocess.run(
+              ["git", "merge-base", "--is-ancestor", baseline, "HEAD"],
+              cwd=workspace,
+              stdout=subprocess.DEVNULL,
+              stderr=subprocess.DEVNULL,
+          ).returncode == 0
+
+          if baseline_is_ancestor:
+              changed_bytes = git(
+                  "diff", "--no-renames", "--name-only", "-z",
+                  baseline, "HEAD", "--"
+              )
+          else:
+              # First successful run, or a baseline outside this history:
+              # publish all existing builds.
+              changed_bytes = git("ls-files", "-z")
+
+          changed = [
+              os.fsdecode(path)
+              for path in changed_bytes.split(b"\0")
+              if path
+          ]
+
+          selected = set()
+          for path in changed:
+              for root in sorted(roots, key=len, reverse=True):
+                  if root == "." or path.startswith(root + "/"):
+                      selected.add(root)
+                      break
+
+          # Repository-wide Gradle build logic can affect every build.
+          if any(
+              path.startswith(("gradle/", "build-logic/", "buildSrc/"))
+              for path in changed
+          ):
+              selected.update(roots)
+
+          commit_hash = git("rev-parse", "--short=12", "HEAD").decode().strip()
+
+          def snapshot_version(root):
+              properties = workspace / root / "gradle.properties"
+
+              if not properties.exists():
+                  print(
+                      f"::warning::New Gradle build {root}: "
+                      "gradle.properties is missing; using 0.0.0"
+                  )
+                  stable = "0.0.0"
+              else:
+                  values = []
+                  for line in properties.read_text(encoding="utf-8").splitlines():
+                      if line.lstrip().startswith(("#", "!")) or "=" not in line:
+                          continue
+                      key, value = line.split("=", 1)
+                      if key.strip() == "version":
+                          values.append(value.strip())
+
+                  if len(values) != 1:
+                      raise ValueError(
+                          f"{properties}: expected exactly one version property"
+                      )
+
+                  stable = values[0]
+                  if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", stable):
+                      raise ValueError(
+                          f"{properties}: expected a stable MAJOR.MINOR.PATCH version"
+                      )
+
+              return f"{stable}-{commit_hash}-SNAPSHOT"
+
+          targets = [
+              {"path": root, "version": snapshot_version(root)}
+              for root in sorted(selected)
+          ]
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              print(
+                  "targets=" + json.dumps(targets, separators=(",", ":")),
+                  file=output,
+              )
+
+          print("Publish targets:", targets)
+          PY
+
+      - name: Publish snapshots
+        if: steps.resolve.outputs.targets != '[]'
+        env:
+          TARGETS_JSON: ${{ steps.resolve.outputs.targets }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          workspace = Path(os.environ["GITHUB_WORKSPACE"])
+
+          for target in json.loads(os.environ["TARGETS_JSON"]):
+              build = workspace / target["path"]
+              wrapper = build / "gradlew"
+              if not wrapper.is_file():
+                  raise FileNotFoundError(f"{build}: gradlew is missing")
+
+              print(f"Publishing {target['path']} as {target['version']}", flush=True)
+              subprocess.run(
+                  ["./gradlew", "--no-daemon", f"-Pversion={target['version']}", "publish"],
+                  cwd=build,
+                  check=True,
+              )
+          PY
