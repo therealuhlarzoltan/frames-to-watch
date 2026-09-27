@@ -7,14 +7,8 @@ plugins {
     id 'maven-publish'
 }
 
-def ref = System.getenv("GITHUB_REF") ?: ""
-def refName = System.getenv("GITHUB_REF_NAME") ?: ""
-def sha = (System.getenv("GITHUB_SHA") ?: "local").take(7)
-
 group = 'hu.therealuhlarzoltan.framestowatch'
-version = ref.startsWith("refs/tags/v")
-        ? refName.substring(1)          // v1.2.3 -> 1.2.3
-        : "0.0.0-develop-${sha}"        // develop -> unique every time
+version = providers.gradleProperty('version').getOrElse('0.0.0')
 
 java {
     toolchain {
